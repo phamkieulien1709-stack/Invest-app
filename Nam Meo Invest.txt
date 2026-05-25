@@ -1,0 +1,1535 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  PiggyBank, 
+  TrendingUp, 
+  BookOpen, 
+  Settings, 
+  Plus, 
+  ArrowUpCircle, 
+  ArrowDownCircle, 
+  Wallet,
+  Clock,
+  ChevronRight,
+  LogOut,
+  Award,
+  AlertTriangle,
+  Target,
+  History,
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  Delete,
+  Upload,
+  RefreshCw,
+  Camera,
+  Sparkles,
+  Coins
+} from 'lucide-react';
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Legend 
+} from 'recharts';
+
+const INITIAL_LESSONS = [
+  { id: 1, title: "Tiền không tự nhiên sinh ra", emoji: "🍎", category: "Cơ bản", summary: "Tiền là phần thưởng khi chúng ta giúp đỡ người khác hoặc làm việc chăm chỉ." },
+  { id: 2, title: "Sức mạnh của Lãi kép", emoji: "🌱", category: "Tiết kiệm", summary: "Gieo 1 hạt ngô, sau một thời gian sẽ có cả bắp ngô đầy hạt. Tiền gửi ngân hàng cũng vậy!" },
+  { id: 3, title: "Vàng - Vật báu thời gian", emoji: "🏆", category: "Đầu tư", summary: "Tại sao từ xưa ông bà ta lại thích giữ vàng hơn giữ tiền giấy?" },
+  { id: 4, title: "Cổ phiếu là gì?", emoji: "🏢", category: "Đầu tư", summary: "Là khi con góp vốn để cùng xây dựng một công ty như Lego hay Samsung." }
+];
+
+const App = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('home');
+  const [parentMode, setParentMode] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ show: false, item: null, isEarly: false });
+  
+  // Custom interactive security state
+  const [accountPins, setAccountPins] = useState({
+    Nam: "1234",
+    Meo: "5678",
+    Parent: "0000"
+  });
+  
+  // Custom Avatars state (stored as base64 or null to fallback to emoji)
+  const [avatars, setAvatars] = useState({
+    Nam: null,
+    Meo: null
+  });
+
+  const [showPinSettings, setShowPinSettings] = useState(false);
+  const [showPins, setShowPins] = useState(false);
+
+  // PIN Login Modal states
+  const [childPinModal, setChildPinModal] = useState({ show: false, targetUser: null, enteredPin: "", error: "" });
+  const [parentPinModal, setParentPinModal] = useState({ show: false, enteredPin: "", error: "" });
+
+  // Market prices managed by Parent (VND per Chi)
+  const [marketPrices, setMarketPrices] = useState({
+    goldBuy: 8500000,
+    goldSell: 8350000
+  });
+
+  // Financial Data starting at 0 for both children
+  const [data, setData] = useState({
+    Nam: { cash: 0, transactions: [], investments: { gold: 0, stocks: [], savings: [] } },
+    Meo: { cash: 0, transactions: [], investments: { gold: 0, stocks: [], savings: [] } }
+  });
+
+  const [savingsForm, setSavingsForm] = useState({ amount: 0, rate: 6, months: 12 });
+
+  // References for avatar file uploads
+  const fileInputNam = useRef(null);
+  const fileInputMeo = useRef(null);
+
+  // Generate dynamic coins for the background decoration
+  const bgCoins = useMemo(() => {
+    return Array.from({ length: 15 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      delay: `${Math.random() * 8}s`,
+      duration: `${10 + Math.random() * 15}s`,
+      size: Math.random() * 24 + 12,
+      opacity: Math.random() * 0.4 + 0.1,
+    }));
+  }, [currentUser]); // Regenerate when user switches themes
+
+  const triggerConfetti = () => {
+    if (window.confetti) {
+      window.confetti({ 
+        particleCount: 150, 
+        spread: 70, 
+        origin: { y: 0.6 }, 
+        colors: ['#4f46e5', '#fbbf24', '#10b981', '#f43f5e'] 
+      });
+    }
+  };
+
+  // Inject fonts and custom decorative styles including falling/floating keyframes
+  useEffect(() => {
+    // Canvas Confetti
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    // Google Fonts - Fredoka
+    const linkFont = document.createElement('link');
+    linkFont.rel = 'stylesheet';
+    linkFont.href = 'https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap';
+    document.head.appendChild(linkFont);
+
+    // Dynamic Style Tag for Custom CSS
+    const styleTag = document.createElement('style');
+    styleTag.innerHTML = `
+      .font-playful {
+        font-family: 'Fredoka', 'Nunito', sans-serif;
+      }
+      .text-stroke-blue-main {
+        text-shadow: 
+          -3px -3px 0 #1e3a8a,  
+           3px -3px 0 #1e3a8a,
+          -3px  3px 0 #1e3a8a,
+           3px  3px 0 #1e3a8a,
+           4px  4px 0px rgba(0, 0, 0, 0.15);
+      }
+      .text-stroke-yellow {
+        text-shadow: 
+          -3px -3px 0 #0284c7,  
+           3px -3px 0 #0284c7,
+          -3px  3px 0 #0284c7,
+           3px  3px 0 #0284c7,
+           4px  4px 0px rgba(0, 0, 0, 0.25);
+      }
+      .text-stroke-white {
+        text-shadow: 
+          -3px -3px 0 #1e3a8a,  
+           3px -3px 0 #1e3a8a,
+          -3px  3px 0 #1e3a8a,
+           3px  3px 0 #1e3a8a,
+           4px  4px 0px rgba(0, 0, 0, 0.15);
+      }
+      .brush-highlight {
+        background: linear-gradient(120deg, #facc15 0%, #facc15 100%);
+        background-repeat: no-repeat;
+        background-size: 100% 45%;
+        background-position: 0 85%;
+      }
+      @keyframes floatUp {
+        0% {
+          transform: translateY(110vh) rotate(0deg);
+          opacity: 0;
+        }
+        10% {
+          opacity: var(--coin-opacity, 0.3);
+        }
+        90% {
+          opacity: var(--coin-opacity, 0.3);
+        }
+        100% {
+          transform: translateY(-10vh) rotate(360deg);
+          opacity: 0;
+        }
+      }
+      .animate-float-coin {
+        animation: floatUp linear infinite;
+      }
+      .wood-sign {
+        background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
+        border: 2px solid #f59e0b;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      }
+    `;
+    document.head.appendChild(styleTag);
+
+    // Load saved settings from localStorage
+    const savedAvatars = localStorage.getItem('family_bank_avatars');
+    if (savedAvatars) {
+      try { setAvatars(JSON.parse(savedAvatars)); } catch (e) { console.error(e); }
+    }
+    const savedData = localStorage.getItem('family_bank_financial_data');
+    if (savedData) {
+      try { setData(JSON.parse(savedData)); } catch (e) { console.error(e); }
+    }
+    const savedPins = localStorage.getItem('family_bank_pins');
+    if (savedPins) {
+      try { setAccountPins(JSON.parse(savedPins)); } catch (e) { console.error(e); }
+    }
+
+    return () => { 
+      if (document.body.contains(script)) document.body.removeChild(script); 
+      if (document.head.contains(linkFont)) document.head.removeChild(linkFont);
+      if (document.head.contains(styleTag)) document.head.removeChild(styleTag);
+    };
+  }, []);
+
+  const saveToLocal = (key, val) => {
+    localStorage.setItem(key, JSON.stringify(val));
+  };
+
+  const updateAvatars = (newUserAvatars) => {
+    setAvatars(newUserAvatars);
+    saveToLocal('family_bank_avatars', newUserAvatars);
+  };
+
+  const updateData = (newFinancialData) => {
+    setData(newFinancialData);
+    saveToLocal('family_bank_financial_data', newFinancialData);
+  };
+
+  const updatePins = (newPins) => {
+    setAccountPins(newPins);
+    saveToLocal('family_bank_pins', newPins);
+  };
+
+  const stats = useMemo(() => {
+    if (!currentUser) return null;
+    const userData = data[currentUser];
+    const goldValue = userData.investments.gold * marketPrices.goldSell;
+    const stockValue = userData.investments.stocks.reduce((acc, s) => acc + (s.quantity * s.currentPrice), 0);
+    const savingsValue = userData.investments.savings.reduce((acc, s) => acc + s.amount, 0);
+    const totalAssets = userData.cash + goldValue + stockValue + savingsValue;
+    
+    const pieData = [
+      { name: 'Tiền mặt', value: userData.cash, color: '#10b981' },
+      { name: 'Vàng', value: goldValue, color: '#fbbf24' },
+      { name: 'Cổ phiếu', value: stockValue, color: '#3b82f6' },
+      { name: 'Tiết kiệm', value: savingsValue, color: '#a855f7' }
+    ].filter(item => item.value > 0);
+
+    return { goldValue, stockValue, savingsValue, totalAssets, pieData };
+  }, [currentUser, data, marketPrices]);
+
+  const handleTransaction = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const type = formData.get('type');
+    const amount = Number(formData.get('amount'));
+    if (amount <= 0) return;
+    if (type === 'expense' && data[currentUser].cash < amount) return;
+
+    const newTx = {
+      id: Date.now(), type, amount,
+      category: formData.get('category'),
+      note: formData.get('note'),
+      date: new Date().toISOString().split('T')[0]
+    };
+
+    const newData = { ...data };
+    newData[currentUser].transactions = [newTx, ...newData[currentUser].transactions];
+    newData[currentUser].cash += (type === 'income' ? amount : -amount);
+    updateData(newData);
+    if (type === 'income') triggerConfetti();
+    e.target.reset();
+  };
+
+  const handleTradeGold = (action, amountVND) => {
+    const newData = { ...data };
+    const date = new Date().toISOString().split('T')[0];
+    if (action === 'buy') {
+      if (amountVND > data[currentUser].cash) return;
+      const chiGold = amountVND / marketPrices.goldBuy;
+      newData[currentUser].cash -= amountVND;
+      newData[currentUser].investments.gold += chiGold;
+      newData[currentUser].transactions = [{
+        id: Date.now(), type: 'expense', amount: amountVND, category: 'Mua Vàng 🏆',
+        note: `Đổi tiền hũ heo lấy ${chiGold.toFixed(3)} chỉ vàng`, date
+      }, ...newData[currentUser].transactions];
+    } else {
+      const goldToSell = Number(prompt("Con muốn bán bao nhiêu chỉ vàng?", "0.1"));
+      if (goldToSell <= 0 || goldToSell > data[currentUser].investments.gold) return;
+      const receivedVND = goldToSell * marketPrices.goldSell;
+      newData[currentUser].investments.gold -= goldToSell;
+      newData[currentUser].cash += receivedVND;
+      newData[currentUser].transactions = [{
+        id: Date.now(), type: 'income', amount: receivedVND, category: 'Bán Vàng 💰',
+        note: `Bán ${goldToSell} chỉ vàng về hũ heo`, date
+      }, ...newData[currentUser].transactions];
+    }
+    updateData(newData);
+    triggerConfetti();
+  };
+
+  const handleTradeStock = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const action = formData.get('action');
+    const symbol = formData.get('symbol').toUpperCase();
+    const quantity = Number(formData.get('quantity'));
+    const price = Number(formData.get('price'));
+    const totalValue = quantity * price;
+    const date = new Date().toISOString().split('T')[0];
+
+    if (quantity <= 0 || price <= 0 || !symbol) return;
+
+    const newData = { ...data };
+    const userInvestments = newData[currentUser].investments;
+
+    if (action === 'buy') {
+      if (totalValue > data[currentUser].cash) return;
+      newData[currentUser].cash -= totalValue;
+      const existingIdx = userInvestments.stocks.findIndex(s => s.symbol === symbol);
+      if (existingIdx >= 0) {
+        const s = userInvestments.stocks[existingIdx];
+        userInvestments.stocks[existingIdx] = { ...s, quantity: s.quantity + quantity, currentPrice: price };
+      } else {
+        userInvestments.stocks.push({ symbol, quantity, buyPrice: price, currentPrice: price });
+      }
+      newData[currentUser].transactions = [{
+        id: Date.now(), type: 'expense', amount: totalValue, category: `Mua CP ${symbol} 🏢`,
+        note: `Mua ${quantity} cổ phiếu giá ${price.toLocaleString()}đ`, date
+      }, ...newData[currentUser].transactions];
+    } else {
+      const existingIdx = userInvestments.stocks.findIndex(s => s.symbol === symbol);
+      if (existingIdx === -1 || userInvestments.stocks[existingIdx].quantity < quantity) return;
+      newData[currentUser].cash += totalValue;
+      userInvestments.stocks[existingIdx].quantity -= quantity;
+      if (userInvestments.stocks[existingIdx].quantity === 0) userInvestments.stocks.splice(existingIdx, 1);
+      newData[currentUser].transactions = [{
+        id: Date.now(), type: 'income', amount: totalValue, category: `Bán CP ${symbol} 💰`,
+        note: `Bán ${quantity} cổ phiếu giá ${price.toLocaleString()}đ`, date
+      }, ...newData[currentUser].transactions];
+    }
+    updateData(newData);
+    triggerConfetti();
+    e.target.reset();
+  };
+
+  const handleAddSavings = (e) => {
+    e.preventDefault();
+    const { amount, rate, months } = savingsForm;
+    if (amount <= 0 || amount > data[currentUser].cash) return;
+
+    const startDate = new Date();
+    const maturityDate = new Date();
+    maturityDate.setMonth(startDate.getMonth() + Number(months));
+    const expectedInterest = amount * (rate / 100) * (months / 12);
+
+    const newSaving = {
+      id: Date.now(), amount, rate, months,
+      startDate: startDate.toISOString().split('T')[0],
+      maturityDate: maturityDate.toISOString().split('T')[0],
+      expectedInterest
+    };
+
+    const newData = { ...data };
+    newData[currentUser].cash -= amount;
+    newData[currentUser].investments.savings = [...newData[currentUser].investments.savings, newSaving];
+    newData[currentUser].transactions = [{
+      id: Date.now(), type: 'expense', amount, category: 'Gửi Tiết kiệm 🏦',
+      note: `Gửi ${amount.toLocaleString()}đ kỳ hạn ${months} tháng`,
+      date: startDate.toISOString().split('T')[0]
+    }, ...newData[currentUser].transactions];
+
+    updateData(newData);
+    setSavingsForm({ amount: 0, rate: 6, months: 12 });
+    triggerConfetti();
+  };
+
+  const initiateWithdraw = (item) => {
+    const isEarly = new Date() < new Date(item.maturityDate);
+    setConfirmModal({ show: true, item, isEarly });
+  };
+
+  const executeWithdraw = () => {
+    const { item, isEarly } = confirmModal;
+    const newData = { ...data };
+    const dateStr = new Date().toISOString().split('T')[0];
+    const totalReturn = isEarly ? item.amount : (item.amount + item.expectedInterest);
+    
+    newData[currentUser].cash += totalReturn;
+    newData[currentUser].transactions = [{
+      id: Date.now(), type: 'income', amount: totalReturn, 
+      category: isEarly ? 'Rút Tiết kiệm Sớm ⚠️' : 'Rút Tiết kiệm 🏦',
+      note: isEarly ? `Rút sớm, chỉ nhận gốc ${item.amount.toLocaleString()}đ` : `Nhận gốc và lãi sau ${item.months} tháng`, 
+      date: dateStr
+    }, ...newData[currentUser].transactions];
+    
+    newData[currentUser].investments.savings = newData[currentUser].investments.savings.filter(s => s.id !== item.id);
+    updateData(newData);
+    setConfirmModal({ show: false, item: null, isEarly: false });
+    if (!isEarly) triggerConfetti();
+  };
+
+  const handleSelectUser = (user) => {
+    setChildPinModal({
+      show: true,
+      targetUser: user,
+      enteredPin: "",
+      error: ""
+    });
+  };
+
+  const handleChildPinPress = (num) => {
+    const current = childPinModal.enteredPin;
+    if (current.length >= 4) return;
+    
+    const updated = current + num;
+    setChildPinModal({ ...childPinModal, enteredPin: updated, error: "" });
+
+    if (updated.length === 4) {
+      if (updated === accountPins[childPinModal.targetUser]) {
+        setTimeout(() => {
+          setCurrentUser(childPinModal.targetUser);
+          setChildPinModal({ show: false, targetUser: null, enteredPin: "", error: "" });
+          triggerConfetti();
+        }, 300);
+      } else {
+        setTimeout(() => {
+          setChildPinModal({ ...childPinModal, enteredPin: "", error: "Sai mã PIN rồi, con nhập lại nha! 😢" });
+        }, 300);
+      }
+    }
+  };
+
+  const handleChildPinDelete = () => {
+    setChildPinModal({
+      ...childPinModal,
+      enteredPin: childPinModal.enteredPin.slice(0, -1),
+      error: ""
+    });
+  };
+
+  const handleToggleParentMode = () => {
+    if (parentMode) {
+      setParentMode(false);
+    } else {
+      setParentPinModal({
+        show: true,
+        enteredPin: "",
+        error: ""
+      });
+    }
+  };
+
+  const handleParentPinPress = (num) => {
+    const current = parentPinModal.enteredPin;
+    if (current.length >= 4) return;
+
+    const updated = current + num;
+    setParentPinModal({ ...parentPinModal, enteredPin: updated, error: "" });
+
+    if (updated.length === 4) {
+      if (updated === accountPins.Parent) {
+        setTimeout(() => {
+          setParentMode(true);
+          setParentPinModal({ show: false, enteredPin: "", error: "" });
+          triggerConfetti();
+        }, 300);
+      } else {
+        setTimeout(() => {
+          setParentPinModal({ ...parentPinModal, enteredPin: "", error: "Mã PIN của Mẹ chưa đúng ạ! 🔐" });
+        }, 300);
+      }
+    }
+  };
+
+  const handleParentPinDelete = () => {
+    setParentPinModal({
+      ...parentPinModal,
+      enteredPin: parentPinModal.enteredPin.slice(0, -1),
+      error: ""
+    });
+  };
+
+  const handleAvatarFileChange = (user, event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const updated = { ...avatars, [user]: reader.result };
+        updateAvatars(updated);
+        triggerConfetti();
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleResetAvatar = (user) => {
+    const updated = { ...avatars, [user]: null };
+    updateAvatars(updated);
+  };
+
+  // Dedicated Capybara SVG Icon for Baby Nam
+  const renderCapybaraIconSVG = () => (
+    <svg viewBox="0 0 100 100" className="w-full h-full">
+      <ellipse cx="50" cy="55" rx="35" ry="28" fill="#d97706" />
+      <path d="M 25 45 C 25 20, 75 20, 75 45 L 75 70 L 25 70 Z" fill="#f59e0b" />
+      <ellipse cx="30" cy="30" rx="6" ry="10" fill="#d97706" />
+      <ellipse cx="70" cy="30" rx="6" ry="10" fill="#d97706" />
+      <path d="M 38 45 Q 42 48 46 45" stroke="#451a03" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <path d="M 54 45 Q 58 48 62 45" stroke="#451a03" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <ellipse cx="50" cy="58" rx="10" ry="6" fill="#451a03" />
+      <circle cx="32" cy="52" r="4" fill="#f43f5e" opacity="0.6" />
+      <circle cx="68" cy="52" r="4" fill="#f43f5e" opacity="0.6" />
+    </svg>
+  );
+
+  // Recreating the children's illustration vectors from image_1a4c83.jpg
+  const renderNamVector = () => (
+    <svg viewBox="0 0 200 200" className="w-40 h-40 drop-shadow-xl animate-bounce" style={{ animationDuration: '4s' }}>
+      {/* Mushroom Red Hat with White Dots */}
+      <path d="M 25 110 C 25 35, 175 35, 175 110 Z" fill="#ef4444" stroke="#b91c1c" strokeWidth="4" />
+      <circle cx="55" cy="70" r="14" fill="#ffffff" />
+      <circle cx="100" cy="50" r="18" fill="#ffffff" />
+      <circle cx="145" cy="70" r="14" fill="#ffffff" />
+      <circle cx="100" cy="92" r="12" fill="#ffffff" />
+      
+      {/* Face & Hair */}
+      <rect x="60" y="100" width="80" height="65" rx="35" fill="#fecdd3" />
+      <rect x="60" y="95" width="80" height="65" rx="35" fill="#fff1f2" />
+      {/* Hair Bangs */}
+      <path d="M 60 110 Q 100 122 140 110 Q 100 90 60 110 Z" fill="#78350f" />
+      {/* Big Cute Eyes */}
+      <circle cx="82" cy="125" r="8" fill="#1e293b" />
+      <circle cx="80" cy="122" r="2.5" fill="#ffffff" />
+      <circle cx="118" cy="125" r="8" fill="#1e293b" />
+      <circle cx="116" cy="122" r="2.5" fill="#ffffff" />
+      {/* Blushing cheek */}
+      <ellipse cx="72" cy="138" rx="8" ry="4" fill="#f43f5e" opacity="0.6" />
+      <ellipse cx="128" cy="138" rx="8" ry="4" fill="#f43f5e" opacity="0.6" />
+      {/* Smiling Mouth */}
+      <path d="M 94 136 Q 100 144 106 136" stroke="#be123c" strokeWidth="3" fill="none" strokeLinecap="round" />
+      
+      {/* Left Hand Holding Gold Coin */}
+      <circle cx="50" cy="145" r="16" fill="#facc15" stroke="#ca8a04" strokeWidth="2" />
+      <circle cx="50" cy="145" r="11" fill="#eab308" />
+      <path d="M 47 140 L 53 145 L 47 150" stroke="#ca8a04" strokeWidth="2" fill="none" />
+      {/* Hand holding it */}
+      <circle cx="58" cy="150" r="7" fill="#fff1f2" />
+    </svg>
+  );
+
+  const renderMeoVector = () => (
+    <svg viewBox="0 0 200 200" className="w-40 h-40 drop-shadow-xl animate-bounce" style={{ animationDuration: '4.5s' }}>
+      {/* Orange Cat Ears Hat */}
+      <ellipse cx="100" cy="110" rx="70" ry="52" fill="#f59e0b" stroke="#ca8a04" strokeWidth="4" />
+      <path d="M 40 70 L 30 25 L 75 55 Z" fill="#f59e0b" stroke="#ca8a04" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M 45 65 L 36 34 L 70 52 Z" fill="#ffe4e6" />
+      <path d="M 160 70 L 170 25 L 125 55 Z" fill="#f59e0b" stroke="#ca8a04" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M 155 65 L 164 34 L 130 52 Z" fill="#ffe4e6" />
+      
+      {/* Face & Hair */}
+      <rect x="60" y="100" width="80" height="65" rx="35" fill="#fde047" />
+      <rect x="60" y="95" width="80" height="65" rx="35" fill="#fff1f2" />
+      <path d="M 60 110 Q 100 118 140 110" stroke="#78350f" strokeWidth="4" fill="none" />
+      {/* Eyes */}
+      <circle cx="82" cy="125" r="8" fill="#1e293b" />
+      <circle cx="80" cy="122" r="2.5" fill="#ffffff" />
+      <circle cx="118" cy="125" r="8" fill="#1e293b" />
+      <circle cx="116" cy="122" r="2.5" fill="#ffffff" />
+      {/* Cheek blush */}
+      <ellipse cx="72" cy="138" rx="8" ry="4" fill="#ca8a04" opacity="0.6" />
+      <ellipse cx="128" cy="138" rx="8" ry="4" fill="#ca8a04" opacity="0.6" />
+      {/* Smiling Mouth */}
+      <path d="M 94 136 Q 100 144 106 136" stroke="#78350f" strokeWidth="3" fill="none" strokeLinecap="round" />
+      
+      {/* Right Hand Holding Gold Coin */}
+      <circle cx="150" cy="145" r="16" fill="#facc15" stroke="#ca8a04" strokeWidth="2" />
+      <circle cx="150" cy="145" r="11" fill="#eab308" />
+      <path d="M 147 140 L 153 145 L 147 150" stroke="#ca8a04" strokeWidth="2" fill="none" />
+      <circle cx="142" cy="150" r="7" fill="#fff1f2" />
+    </svg>
+  );
+
+  const renderAvatar = (user, sizeClass = "w-14 h-14 text-3xl", roundedClass = "rounded-[22px]") => {
+    const customImg = avatars[user];
+    
+    if (customImg) {
+      return (
+        <img 
+          src={customImg} 
+          alt={`Avatar ${user}`} 
+          className={`${sizeClass} ${roundedClass} object-cover border-4 border-white shadow-md ring-4 ring-indigo-50`}
+        />
+      );
+    }
+
+    if (user === 'Nam') {
+      return (
+        <div className={`${sizeClass} ${roundedClass} bg-amber-100 flex items-center justify-center border-4 border-white shadow-inner ring-4 ring-indigo-50 overflow-hidden p-1`}>
+          {renderCapybaraIconSVG()}
+        </div>
+      );
+    }
+
+    return (
+      <div className={`${sizeClass} ${roundedClass} bg-pink-100 text-pink-900 flex items-center justify-center border-4 border-white shadow-inner ring-4 ring-indigo-50`}>
+        🐱
+      </div>
+    );
+  };
+
+  // 3D Piggy Bank SVG illustration recreating image_197e4c.jpg
+  const render3DPiggySVG = () => (
+    <svg viewBox="0 0 500 400" className="w-full max-w-sm h-auto drop-shadow-2xl">
+      {/* Platform/Podium */}
+      <ellipse cx="250" cy="310" rx="180" ry="45" fill="#f1f5f9" />
+      <ellipse cx="250" cy="305" rx="180" ry="45" fill="#ffffff" />
+      <ellipse cx="250" cy="305" rx="160" ry="38" fill="#e2e8f0" />
+      <path d="M 70 305 A 180 45 0 0 0 430 305 L 430 325 A 180 45 0 0 1 70 325 Z" fill="#cbd5e1" />
+      
+      {/* Leafy branch Right */}
+      <path d="M 330 290 Q 380 230 360 140" fill="none" stroke="#86efac" strokeWidth="5" strokeLinecap="round" />
+      <path d="M 360 140 C 340 160 340 190 355 210 Z" fill="#4ade80" />
+      <path d="M 345 250 C 320 250 310 230 330 210 Z" fill="#22c55e" />
+      <path d="M 370 210 C 390 190 400 210 380 230 Z" fill="#4ade80" />
+      
+      {/* Leafy branch Left & Pink Flower */}
+      <path d="M 170 290 Q 120 230 140 160" fill="none" stroke="#86efac" strokeWidth="5" strokeLinecap="round" />
+      <path d="M 140 160 C 120 180 120 210 135 230 Z" fill="#4ade80" />
+      <path d="M 110 230 C 95 210 115 190 125 210 Z" fill="#22c55e" />
+      {/* Pink Flower on left */}
+      <circle cx="115" cy="185" r="22" fill="#fca5a5" />
+      <circle cx="100" cy="180" r="14" fill="#fca5a5" />
+      <circle cx="130" cy="190" r="14" fill="#fca5a5" />
+      <circle cx="115" cy="200" r="14" fill="#fca5a5" />
+      <circle cx="115" cy="185" r="10" fill="#fef08a" />
+
+      {/* Scattered Golden Spheres / Seeds around podium */}
+      <circle cx="95" cy="295" r="8" fill="#eab308" />
+      <circle cx="60" cy="335" r="9" fill="#ca8a04" />
+      <circle cx="65" cy="345" r="6" fill="#eab308" />
+      <circle cx="390" cy="315" r="8" fill="#ca8a04" />
+      <circle cx="410" cy="350" r="7" fill="#eab308" />
+      <circle cx="200" cy="370" r="9" fill="#eab308" />
+
+      {/* Stacks of Gold Coins Left */}
+      <g transform="translate(90, 215)">
+        <path d="M 0 40 A 30 12 0 0 0 60 40 L 60 80 A 30 12 0 0 1 0 80 Z" fill="#ca8a04" />
+        <ellipse cx="30" cy="40" rx="30" ry="12" fill="#facc15" />
+        <path d="M 0 50 A 30 12 0 0 0 60 50 L 60 62 A 30 12 0 0 1 0 62 Z" fill="#eab308" />
+        <ellipse cx="30" cy="50" rx="30" ry="12" fill="#fef08a" />
+        <path d="M 0 62 A 30 12 0 0 0 60 62 L 60 74 A 30 12 0 0 1 0 74 Z" fill="#ca8a04" />
+        <ellipse cx="30" cy="62" rx="30" ry="12" fill="#facc15" />
+      </g>
+
+      {/* Stacks of Gold Coins Right */}
+      <g transform="translate(250, 225)">
+        <path d="M 0 40 A 30 12 0 0 0 60 40 L 60 80 A 30 12 0 0 1 0 80 Z" fill="#ca8a04" />
+        <ellipse cx="30" cy="40" rx="30" ry="12" fill="#facc15" />
+        <path d="M 0 52 A 30 12 0 0 0 60 52 L 60 64 A 30 12 0 0 1 0 64 Z" fill="#eab308" />
+        <ellipse cx="30" cy="52" rx="30" ry="12" fill="#fef08a" />
+        <path d="M 0 64 A 30 12 0 0 0 60 64 L 60 76 A 30 12 0 0 1 0 76 Z" fill="#ca8a04" />
+        <ellipse cx="30" cy="64" rx="30" ry="12" fill="#facc15" />
+      </g>
+      
+      {/* Front Loose Coins */}
+      <ellipse cx="165" cy="335" rx="30" ry="15" fill="#ca8a04" />
+      <ellipse cx="165" cy="332" rx="30" ry="15" fill="#facc15" />
+      <ellipse cx="270" cy="340" rx="32" ry="16" fill="#ca8a04" />
+      <ellipse cx="270" cy="337" rx="32" ry="16" fill="#facc15" />
+
+      {/* Piggy Ears */}
+      <ellipse cx="195" cy="110" rx="20" ry="32" fill="#fecdd3" transform="rotate(-30, 195, 110)" />
+      <ellipse cx="195" cy="110" rx="10" ry="22" fill="#f43f5e" transform="rotate(-30, 195, 110)" />
+      <ellipse cx="285" cy="120" rx="20" ry="32" fill="#fecdd3" transform="rotate(30, 285, 120)" />
+      <ellipse cx="285" cy="120" rx="10" ry="22" fill="#f43f5e" transform="rotate(30, 285, 120)" />
+
+      {/* Main Piggy Body (image_197e4c.jpg style) */}
+      <circle cx="240" cy="190" r="75" fill="#fca5a5" />
+      <circle cx="240" cy="186" r="75" fill="#fecdd3" />
+
+      {/* Piggy Eyes */}
+      <circle cx="205" cy="165" r="7" fill="#1e293b" />
+      <circle cx="265" cy="170" r="7" fill="#1e293b" />
+      
+      {/* Blushing cheeks */}
+      <ellipse cx="190" cy="182" rx="14" ry="8" fill="#f43f5e" opacity="0.4" />
+      <ellipse cx="280" cy="188" rx="14" ry="8" fill="#f43f5e" opacity="0.4" />
+
+      {/* Piggy Snout */}
+      <ellipse cx="230" cy="195" rx="28" ry="20" fill="#fca5a5" />
+      <ellipse cx="230" cy="191" rx="28" ry="20" fill="#fda4af" />
+      {/* Snout Nostrils */}
+      <ellipse cx="218" cy="191" rx="6" ry="10" fill="#e11d48" />
+      <ellipse cx="242" cy="191" rx="6" ry="10" fill="#e11d48" />
+
+      {/* Piggy Legs */}
+      <rect x="195" y="245" width="26" height="35" rx="13" fill="#fda4af" />
+      <rect x="255" y="248" width="26" height="35" rx="13" fill="#fda4af" />
+      <rect x="195" y="245" width="26" height="31" rx="13" fill="#fecdd3" />
+      <rect x="255" y="248" width="26" height="31" rx="13" fill="#fecdd3" />
+      {/* Cute red feet tips */}
+      <path d="M 195 268 A 13 13 0 0 0 221 268 L 221 276 A 13 13 0 0 1 195 276 Z" fill="#e11d48" />
+      <path d="M 255 271 A 13 13 0 0 0 281 271 L 281 279 A 13 13 0 0 1 255 279 Z" fill="#e11d48" />
+
+      {/* Sprout growing on top of Piggy Bank head matching image_1a4c83.jpg */}
+      <path d="M 240 115 Q 240 90 248 80" fill="none" stroke="#22c55e" strokeWidth="4" strokeLinecap="round" />
+      <path d="M 248 80 C 240 76 235 65 240 58 C 245 65 248 76 248 80 Z" fill="#4ade80" />
+      <path d="M 248 80 C 256 76 261 65 256 58 C 251 65 248 76 248 80 Z" fill="#22c55e" />
+    </svg>
+  );
+
+  // Rich Capybara illustration with crown and coin (recreating image_198246.jpg)
+  const renderCapybaraSVG = () => (
+    <svg viewBox="0 0 250 250" className="w-48 h-48 drop-shadow-xl animate-bounce" style={{ animationDuration: '4s' }}>
+      {/* Capybara Body & Head in solid colors */}
+      <ellipse cx="125" cy="150" rx="65" ry="50" fill="#b45309" /> {/* Dark shading */}
+      <ellipse cx="125" cy="145" rx="65" ry="50" fill="#d97706" /> {/* Main body */}
+      
+      {/* Head */}
+      <path d="M 75 130 C 75 80, 155 80, 155 130 L 155 170 C 155 180, 75 180, 75 170 Z" fill="#b45309" />
+      <path d="M 75 125 C 75 75, 155 75, 155 125 L 155 165 C 155 175, 75 175, 75 165 Z" fill="#f59e0b" />
+      
+      {/* Ears */}
+      <ellipse cx="80" cy="95" rx="10" ry="14" fill="#d97706" />
+      <ellipse cx="150" cy="95" rx="10" ry="14" fill="#d97706" />
+      
+      {/* Sleeping Eyes */}
+      <path d="M 90 120 Q 95 125 100 120" stroke="#451a03" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <path d="M 130 120 Q 135 125 140 120" stroke="#451a03" strokeWidth="4" fill="none" strokeLinecap="round" />
+
+      {/* Cute nose & snout */}
+      <ellipse cx="115" cy="138" rx="15" ry="10" fill="#d97706" opacity="0.6" />
+      <ellipse cx="115" cy="145" rx="12" ry="8" fill="#451a03" />
+
+      {/* Rosy Cheeks */}
+      <ellipse cx="83" cy="135" rx="8" ry="5" fill="#f43f5e" opacity="0.6" />
+      <ellipse cx="147" cy="135" rx="8" ry="5" fill="#f43f5e" opacity="0.6" />
+
+      {/* Royal Crown on head (image_198246.jpg) */}
+      <g transform="translate(95, 42)">
+        <path d="M 10 30 L 15 10 L 30 22 L 45 10 L 50 30 Z" fill="#facc15" stroke="#ca8a04" strokeWidth="2" />
+        <circle cx="15" cy="10" r="3" fill="#ef4444" />
+        <circle cx="30" cy="22" r="3" fill="#3b82f6" />
+        <circle cx="45" cy="10" r="3" fill="#ef4444" />
+        <rect x="15" y="26" width="30" height="4" fill="#ef4444" rx="2" />
+      </g>
+
+      {/* Huge Golden Coin they are holding */}
+      <circle cx="125" cy="195" r="30" fill="#ca8a04" />
+      <circle cx="125" cy="192" r="30" fill="#facc15" />
+      <circle cx="125" cy="192" r="22" fill="#eab308" />
+      {/* Capybara face stamp in the coin center */}
+      <ellipse cx="125" cy="192" rx="10" ry="7" fill="#ca8a04" />
+      <ellipse cx="125" cy="192" rx="4" ry="4" fill="#451a03" />
+    </svg>
+  );
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-between font-playful relative overflow-hidden pb-6">
+        {/* Dynamic floating gold coins background */}
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+          {bgCoins.map(coin => (
+            <div
+              key={coin.id}
+              className="absolute animate-float-coin flex items-center justify-center text-yellow-400"
+              style={{
+                left: coin.left,
+                animationDelay: coin.delay,
+                animationDuration: coin.duration,
+                width: coin.size,
+                height: coin.size,
+                '--coin-opacity': coin.opacity,
+              }}
+            >
+              <Coins size={coin.size} />
+            </div>
+          ))}
+        </div>
+
+        {/* Radiant Sunny Meadow Background matching image_1a4c83.jpg */}
+        <div className="absolute inset-0 z-0 flex flex-col pointer-events-none">
+          {/* Sunny Sky Gradient with radiant glow effect */}
+          <div className="h-3/5 bg-gradient-to-b from-[#fef08a] via-[#fef3c7] to-[#dcfce7] relative flex items-start justify-between p-12 overflow-hidden">
+            {/* Sun Rays back-glow */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(253,224,71,0.4)_0%,transparent_70%)]"></div>
+            {/* SVG Clouds */}
+            <svg className="w-24 h-24 text-white/40 absolute top-10 left-10" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19.36 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.64-4.96z"/>
+            </svg>
+            <svg className="w-36 h-36 text-white/30 absolute top-16 right-10" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M19.36 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.64-4.96z"/>
+            </svg>
+            {/* Small floating green leaves */}
+            <div className="absolute top-1/4 left-1/3 text-emerald-400/30 animate-pulse"><Sparkles size={24} /></div>
+            <div className="absolute top-1/3 right-1/4 text-emerald-400/20 animate-bounce"><Sparkles size={16} /></div>
+          </div>
+          
+          {/* Beautiful Lush Green Meadow Hill */}
+          <div className="h-2/5 bg-gradient-to-b from-[#4ade80] to-[#15803d] relative">
+            <svg className="absolute bottom-full left-0 right-0 w-full text-[#4ade80] h-20" fill="currentColor" viewBox="0 0 1440 100" preserveAspectRatio="none">
+              <path d="M0,64 C288,110 576,120 864,100 C1152,80 1320,40 1440,32 L1440,100 L0,100 Z"></path>
+            </svg>
+            {/* Tiny Flowers in the grass */}
+            <div className="absolute bottom-24 left-1/4 w-3 h-3 bg-white rounded-full shadow"></div>
+            <div className="absolute bottom-20 left-[26%] w-2 h-2 bg-yellow-300 rounded-full"></div>
+            <div className="absolute bottom-16 right-1/3 w-3 h-3 bg-rose-300 rounded-full shadow"></div>
+          </div>
+        </div>
+
+        {/* Brand Header replicating image_1a4c83.jpg */}
+        <div className="text-center z-10 pt-10 px-6 max-w-2xl">
+          {/* Royal Crown Shield Label for Family Banking */}
+          <div className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-full shadow-2xl border-2 border-amber-400 mb-6 relative">
+            {/* SVG Crown */}
+            <svg className="w-6 h-6 text-amber-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M2 18h20v2H2zm18-4l-3-6-5 4-5-4-3 6h16z"/>
+            </svg>
+            <span className="font-black text-sm tracking-wider uppercase">Family Banking</span>
+          </div>
+
+          {/* Premium stylized typography with precise color schemes */}
+          <h1 className="text-5xl md:text-6xl font-black text-indigo-900 leading-none tracking-tight mb-2">
+            Mỗi đồng tiết kiệm
+          </h1>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[#f43f5e] tracking-wide mb-4">
+            là một <span className="brush-highlight text-indigo-950 font-black px-2">hạt mầm giàu có</span>
+          </h2>
+        </div>
+        
+        {/* Core Interactive Centerpiece matching image_1a4c83.jpg */}
+        <div className="w-full max-w-5xl px-6 grid grid-cols-3 gap-2 items-end justify-center z-10 my-2">
+          {/* Left Column: Bé Nấm & Board */}
+          <div className="flex flex-col items-center">
+            {renderNamVector()}
+            {/* Custom wood-texture styled name board */}
+            <div className="wood-sign px-6 py-2 rounded-2xl mt-3 relative transform hover:scale-105 transition-transform cursor-pointer" onClick={() => handleSelectUser('Nam')}>
+              <span className="text-white font-black text-sm tracking-wide drop-shadow-md">Bé Nấm</span>
+              {/* Little Flower pin on signboard */}
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-400 rounded-full border border-white"></div>
+            </div>
+          </div>
+
+          {/* Center Column: Sprout Piggy Bank */}
+          <div className="flex justify-center items-center">
+            {render3DPiggySVG()}
+          </div>
+
+          {/* Right Column: Bé Mèo & Board */}
+          <div className="flex flex-col items-center">
+            {renderMeoVector()}
+            <div className="wood-sign px-6 py-2 rounded-2xl mt-3 relative transform hover:scale-105 transition-transform cursor-pointer" onClick={() => handleSelectUser('Meo')}>
+              <span className="text-white font-black text-sm tracking-wide drop-shadow-md">Bé Mèo</span>
+              <div className="absolute -top-1 -left-1 w-3 h-3 bg-yellow-400 rounded-full border border-white"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Large Rounded Pillar Buttons matching image_1a4c83.jpg footer actions */}
+        <div className="w-full max-w-2xl px-6 grid grid-cols-1 sm:grid-cols-2 gap-6 z-10 mt-2">
+          {/* Nấm Login Pill */}
+          <button 
+            onClick={() => handleSelectUser('Nam')}
+            className="group relative bg-gradient-to-r from-rose-400 to-rose-600 hover:from-rose-500 hover:to-rose-700 text-white py-5 px-8 rounded-[36px] shadow-[0_12px_24px_rgba(244,63,94,0.4)] hover:shadow-rose-300 transition-all hover:-translate-y-1 flex items-center justify-between border-4 border-white"
+          >
+            <div className="flex items-center gap-3">
+              {/* Cute mini mushroom icon */}
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">🍄</div>
+              <div className="text-left">
+                <p className="text-xs opacity-85 font-black uppercase tracking-wider">ĐĂNG NHẬP</p>
+                <p className="text-sm font-black tracking-wide">TÀI KHOẢN BÉ NẤM</p>
+              </div>
+            </div>
+            <ChevronRight size={24} className="group-hover:translate-x-1.5 transition-transform" />
+          </button>
+
+          {/* Mèo Login Pill */}
+          <button 
+            onClick={() => handleSelectUser('Meo')}
+            className="group relative bg-gradient-to-r from-sky-400 to-sky-600 hover:from-sky-500 hover:to-sky-700 text-white py-5 px-8 rounded-[36px] shadow-[0_12px_24px_rgba(14,165,233,0.4)] hover:shadow-sky-300 transition-all hover:-translate-y-1 flex items-center justify-between border-4 border-white"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">🐱</div>
+              <div className="text-left">
+                <p className="text-xs opacity-85 font-black uppercase tracking-wider">ĐĂNG NHẬP</p>
+                <p className="text-sm font-black tracking-wide">TÀI KHOẢN BÉ MÈO</p>
+              </div>
+            </div>
+            <ChevronRight size={24} className="group-hover:translate-x-1.5 transition-transform" />
+          </button>
+        </div>
+
+        {/* Shield Security Footer replicating image_1a4c83.jpg */}
+        <div className="z-10 mt-6 max-w-xl px-6 w-full">
+          <div className="bg-amber-50/90 backdrop-blur-md py-3 px-6 rounded-full shadow border border-yellow-200/50 flex items-center justify-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+            <span className="text-[11px] md:text-xs text-indigo-950 font-black tracking-wide">
+              An toàn – Dễ dàng – Đồng hành cùng tương lai của bé 💖
+            </span>
+          </div>
+        </div>
+
+        {/* Backlink to Parent Mode */}
+        <div className="z-10 mt-2 text-[10px] text-emerald-950 font-bold opacity-60 hover:opacity-100 transition-opacity">
+          <button onClick={handleToggleParentMode} className="underline flex items-center gap-1">
+            <Settings size={12} /> Cổng quản trị dành cho Ba Mẹ (PIN: 0000)
+          </button>
+        </div>
+
+        {/* Child PIN Login Modal (PIN Pad) */}
+        {childPinModal.show && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-[36px] shadow-2xl p-8 border border-slate-100 animate-in zoom-in-95 duration-200">
+              <div className="text-center mb-6">
+                <div className="flex justify-center mb-3">
+                  {renderAvatar(childPinModal.targetUser, "w-20 h-20 text-4xl", "rounded-3xl")}
+                </div>
+                <h3 className="text-2xl font-black text-slate-800">
+                  Hũ Heo Bé {childPinModal.targetUser === 'Nam' ? 'Nấm' : 'Mèo'}
+                </h3>
+                <p className="text-slate-400 text-xs font-semibold mt-1">Con hãy nhập mã PIN gồm 4 số để vào hũ nhé!</p>
+              </div>
+
+              {/* Pin dots indicator */}
+              <div className="flex justify-center gap-4 mb-6">
+                {[0, 1, 2, 3].map((idx) => (
+                  <div 
+                    key={idx} 
+                    className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
+                      childPinModal.enteredPin.length > idx 
+                        ? 'bg-indigo-600 border-indigo-600 scale-110' 
+                        : 'border-slate-200 bg-white'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {childPinModal.error && (
+                <p className="text-rose-500 text-xs font-bold text-center mb-4">{childPinModal.error}</p>
+              )}
+
+              {/* Secure keypad */}
+              <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <button 
+                    key={num} 
+                    onClick={() => handleChildPinPress(num.toString())}
+                    className="h-14 bg-slate-50 hover:bg-slate-100 rounded-2xl font-black text-slate-700 text-lg active:scale-95 transition-transform"
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button 
+                  onClick={() => setChildPinModal({ show: false, targetUser: null, enteredPin: "", error: "" })}
+                  className="h-14 text-rose-500 hover:bg-rose-50 rounded-2xl font-bold text-xs"
+                >
+                  Hủy
+                </button>
+                <button 
+                  onClick={() => handleChildPinPress("0")}
+                  className="h-14 bg-slate-50 hover:bg-slate-100 rounded-2xl font-black text-slate-700 text-lg active:scale-95 transition-transform"
+                >
+                  0
+                </button>
+                <button 
+                  onClick={handleChildPinDelete}
+                  className="h-14 flex items-center justify-center bg-slate-50 hover:bg-rose-50 text-slate-500 rounded-2xl active:scale-95 transition-transform"
+                >
+                  <Delete size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const userData = data[currentUser];
+  const isCapybaraTheme = currentUser === 'Nam';
+
+  return (
+    <div className={`min-h-screen flex font-playful text-slate-900 transition-colors duration-500 relative ${
+      isCapybaraTheme 
+        ? 'bg-gradient-to-br from-[#fef3c7] via-[#fde68a] to-[#fcd34d]' // Rich Capybara Gold-Cream Theme
+        : 'bg-gradient-to-br from-[#ffe4e6] via-[#fecdd3] to-[#fda4af]' // Pink Kitty Piggy Theme
+    }`}>
+      
+      {/* Dynamic Background Floating Elements */}
+      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+        {bgCoins.map(coin => (
+          <div
+            key={coin.id}
+            className={`absolute animate-float-coin flex items-center justify-center ${isCapybaraTheme ? 'text-[#d97706]' : 'text-rose-400'}`}
+            style={{
+              left: coin.left,
+              animationDelay: coin.delay,
+              animationDuration: coin.duration,
+              width: coin.size,
+              height: coin.size,
+              '--coin-opacity': coin.opacity,
+            }}
+          >
+            {isCapybaraTheme ? <Coins size={coin.size} /> : <Sparkles size={coin.size} />}
+          </div>
+        ))}
+      </div>
+
+      {/* Sidebar Navigation */}
+      <aside className="w-20 md:w-72 bg-white/90 backdrop-blur-md border-r border-slate-200/50 flex flex-col z-10">
+        <div className="p-8 hidden md:block">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 ${isCapybaraTheme ? 'bg-amber-600' : 'bg-pink-600'} rounded-xl flex items-center justify-center text-white font-bold text-xl shadow`}>M</div>
+            <span className={`font-black text-xl tracking-tight ${isCapybaraTheme ? 'text-amber-900' : 'text-pink-900'}`}>Family Bank</span>
+          </div>
+        </div>
+        <nav className="flex-1 px-4 py-6 space-y-3">
+          {[
+            { id: 'home', icon: Wallet, label: 'Tổng quan' },
+            { id: 'piggy', icon: PiggyBank, label: 'Thu - Chi' },
+            { id: 'invest', icon: TrendingUp, label: 'Giao dịch' },
+            { id: 'learn', icon: BookOpen, label: 'Học viện' },
+          ].map(item => (
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all ${
+              activeTab === item.id 
+                ? `${isCapybaraTheme ? 'bg-amber-600 text-white' : 'bg-pink-600 text-white'} shadow-lg` 
+                : 'text-slate-400 hover:bg-slate-50 hover:text-indigo-600'
+            }`}>
+              <item.icon size={24} strokeWidth={2.5} />
+              <span className="hidden md:block font-bold text-sm uppercase tracking-wide">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        
+        <div className="p-6 border-t border-slate-100/50 space-y-2">
+          <button 
+            onClick={handleToggleParentMode} 
+            className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all ${parentMode ? 'bg-amber-100 text-amber-700 shadow-inner' : 'text-slate-400 hover:bg-slate-50'}`}
+          >
+            <Settings size={20} />
+            <span className="hidden md:block text-sm font-bold">Quản lý của Mẹ</span>
+            {parentMode ? null : <Lock size={12} className="ml-auto text-amber-500" />}
+          </button>
+          <button 
+            onClick={() => { setCurrentUser(null); setActiveTab('home'); setParentMode(false); }} 
+            className="w-full flex items-center gap-3 p-4 rounded-2xl text-red-400 hover:bg-red-50 transition-all"
+          >
+            <LogOut size={20} /><span className="hidden md:block text-sm font-bold">Thoát</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto z-10">
+        <header className="p-8 flex justify-between items-center bg-white/75 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20">
+          <div>
+            <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+              Chào {currentUser === 'Nam' ? 'Nấm 🦫' : 'Mèo 🐱'} yêu! 👋
+            </h1>
+            <p className="text-slate-500 font-bold mt-1">
+              Hôm nay hũ {isCapybaraTheme ? 'Capybara 👑' : 'Heo Hồng 🌸'} của con thế nào rồi?
+            </p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-right hidden lg:block">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tổng tài sản của con</p>
+              <p className={`text-2xl font-black ${isCapybaraTheme ? 'text-amber-700' : 'text-pink-600'} leading-none`}>
+                {stats.totalAssets.toLocaleString()} đ
+              </p>
+            </div>
+            {renderAvatar(currentUser, "w-16 h-16 text-4xl", "rounded-[22px]")}
+          </div>
+        </header>
+
+        <div className="p-8 max-w-7xl mx-auto space-y-10">
+          
+          {/* PARENT MODE CONFIGURATION PANEL */}
+          {parentMode && (
+            <div className="bg-amber-50/95 backdrop-blur-md p-8 rounded-[40px] border-2 border-amber-300 border-dashed animate-in fade-in duration-200 space-y-6 shadow-xl">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="text-amber-900 font-black text-lg flex items-center gap-2">
+                    <Settings size={20}/> Cài đặt của Mẹ - Quản lý Tài chính, Bảo mật & Ảnh đại diện
+                  </h3>
+                  <p className="text-xs text-amber-700 mt-1">Mẹ có thể đổi mã PIN, đổi tỷ giá vàng hoặc tải ảnh từ máy tính để thay ảnh đại diện của bé.</p>
+                </div>
+                <button 
+                  onClick={() => setShowPinSettings(!showPinSettings)} 
+                  className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 transition-colors flex items-center gap-2 shadow"
+                >
+                  <Lock size={14} /> {showPinSettings ? "Ẩn bảo mật PIN & Ảnh" : "Quản lý PIN & Ảnh đại diện"}
+                </button>
+              </div>
+
+              {showPinSettings ? (
+                <div className="bg-white p-6 rounded-3xl shadow-inner border border-amber-100 space-y-6">
+                  {/* Avatar Upload Management Block */}
+                  <div>
+                    <h4 className="text-sm font-black text-slate-700 mb-4 flex items-center gap-1.5 text-amber-800">
+                      <Camera size={16} /> Thay đổi ảnh đại diện cho các bé
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Upload for Bé Nấm */}
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-4">
+                        {renderAvatar('Nam', "w-16 h-16 text-3xl", "rounded-2xl")}
+                        <div className="flex-1 space-y-1.5">
+                          <p className="text-xs font-bold text-slate-700">Ảnh bé Nấm (🦫)</p>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => fileInputNam.current.click()} 
+                              className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-indigo-700 transition-colors"
+                            >
+                              <Upload size={12} /> Tải ảnh
+                            </button>
+                            {avatars.Nam && (
+                              <button 
+                                onClick={() => handleResetAvatar('Nam')} 
+                                className="px-3 py-1.5 bg-rose-100 text-rose-600 rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-rose-200 transition-colors"
+                              >
+                                <RefreshCw size={12} /> Đặt lại
+                              </button>
+                            )}
+                          </div>
+                          <input 
+                            ref={fileInputNam} 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleAvatarFileChange('Nam', e)} 
+                          />
+                        </div>
+                      </div>
+
+                      {/* Upload for Bé Mèo */}
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-4">
+                        {renderAvatar('Meo', "w-16 h-16 text-3xl", "rounded-2xl")}
+                        <div className="flex-1 space-y-1.5">
+                          <p className="text-xs font-bold text-slate-700">Ảnh bé Mèo (🐱)</p>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => fileInputMeo.current.click()} 
+                              className="px-3 py-1.5 bg-pink-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-pink-700 transition-colors"
+                            >
+                              <Upload size={12} /> Tải ảnh
+                            </button>
+                            {avatars.Meo && (
+                              <button 
+                                onClick={() => handleResetAvatar('Meo')} 
+                                className="px-3 py-1.5 bg-rose-100 text-rose-600 rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-rose-200 transition-colors"
+                              >
+                                <RefreshCw size={12} /> Đặt lại
+                              </button>
+                            )}
+                          </div>
+                          <input 
+                            ref={fileInputMeo} 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleAvatarFileChange('Meo', e)} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className="border-slate-100" />
+
+                  {/* PIN Settings Block */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-black text-slate-700 flex items-center gap-1.5">
+                        <Lock size={16} /> Mã PIN tài khoản hiện hành
+                      </h4>
+                      <button 
+                        onClick={() => setShowPins(!showPins)}
+                        className="text-indigo-600 text-xs font-bold flex items-center gap-1.5"
+                      >
+                        {showPins ? <EyeOff size={14} /> : <Eye size={14} />}
+                        {showPins ? "Hiện mã PIN" : "Ẩn mã PIN"}
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mã PIN bé Nấm (🦫)</label>
+                        <input 
+                          type={showPins ? "text" : "password"} 
+                          maxLength={4}
+                          value={accountPins.Nam} 
+                          onChange={(e) => updatePins({ ...accountPins, Nam: e.target.value })}
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-amber-400 font-mono" 
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mã PIN bé Mèo (🐱)</label>
+                        <input 
+                          type={showPins ? "text" : "password"} 
+                          maxLength={4}
+                          value={accountPins.Meo} 
+                          onChange={(e) => updatePins({ ...accountPins, Meo: e.target.value })}
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-amber-400 font-mono" 
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mã PIN của Mẹ (⚙️)</label>
+                        <input 
+                          type={showPins ? "text" : "password"} 
+                          maxLength={4}
+                          value={accountPins.Parent} 
+                          onChange={(e) => updatePins({ ...accountPins, Parent: e.target.value })}
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-amber-400 font-mono" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Gold Prices Setup */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Giá Mua Vàng (VND/Chỉ)</label>
+                  <input type="number" value={marketPrices.goldBuy} onChange={(e) => setMarketPrices({...marketPrices, goldBuy: Number(e.target.value)})} className="w-full p-4 bg-white rounded-2xl shadow-sm border-none font-black text-slate-700 outline-none animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Giá Bán Vàng (VND/Chỉ)</label>
+                  <input type="number" value={marketPrices.goldSell} onChange={(e) => setMarketPrices({...marketPrices, goldSell: Number(e.target.value)})} className="w-full p-4 bg-white rounded-2xl shadow-sm border-none font-black text-slate-700 outline-none animate-pulse" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* HOME TAB (DASHBOARD) */}
+          {activeTab === 'home' && (
+            <div className="space-y-10">
+              {/* Dynamic Theme Banner Illustration */}
+              <div className="bg-white/90 backdrop-blur-md p-8 rounded-[40px] shadow-xl border border-white/40 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+                <div className="space-y-4">
+                  <div className={`inline-block px-4 py-1 rounded-full text-xs font-black ${isCapybaraTheme ? 'bg-amber-100 text-amber-700' : 'bg-pink-100 text-pink-700'}`}>
+                    {isCapybaraTheme ? 'Capybara Hoàng Gia 👑' : 'Hũ Heo May Mắn 🌸'}
+                  </div>
+                  <h2 className={`text-4xl font-black ${isCapybaraTheme ? 'text-amber-900' : 'text-pink-900'} leading-none`}>
+                    {isCapybaraTheme ? 'HŨ NẤM CAPYBARA' : 'HŨ MÈO HEO ĐẤT'}
+                  </h2>
+                  <p className="text-slate-500 max-w-md text-sm font-bold">
+                    {isCapybaraTheme 
+                      ? 'Nền ngập tràn Capybara lười biếng ôm tiền vàng từ thế giới đồ chơi Capy! Hãy tích luỹ thật nhiều để nâng cấp bộ sưu tập đồ chơi nhé!'
+                      : 'Hũ heo hồng may mắn mang tài lộc, bình yên cho bé Mèo. Hãy cùng chăm sóc hũ heo mau lớn mỗi ngày nhé!'}
+                  </p>
+                </div>
+                
+                {/* Visualizer matching theme */}
+                <div className="relative z-10">
+                  {isCapybaraTheme ? renderCapybaraSVG() : render3DPiggySVG()}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-emerald-100/90 backdrop-blur-md p-8 rounded-[32px] shadow-lg border border-white/50">
+                    <div className="p-3 rounded-2xl bg-white shadow-md inline-block mb-6 text-emerald-600"><Wallet size={24} /></div>
+                    <p className="text-slate-500 text-xs font-black uppercase tracking-wider mb-2">Tiền hũ heo</p>
+                    <p className="text-2xl font-black text-emerald-700">{userData.cash.toLocaleString()} đ</p>
+                </div>
+                <div className="bg-amber-100/90 backdrop-blur-md p-8 rounded-[32px] shadow-lg border border-white/50">
+                    <div className="p-3 rounded-2xl bg-white shadow-md inline-block mb-6 text-amber-600"><Award size={24} /></div>
+                    <div className="flex justify-between items-start mb-2">
+                        <p className="text-slate-500 text-xs font-black uppercase tracking-wider">Hũ Vàng</p>
+                        <span className="px-2 py-0.5 bg-white text-amber-600 rounded-full text-[10px] font-black">{userData.investments.gold.toFixed(3)} chỉ</span>
+                    </div>
+                    <p className="text-2xl font-black text-amber-700">{stats.goldValue.toLocaleString()} đ</p>
+                </div>
+                <div className="bg-blue-100/90 backdrop-blur-md p-8 rounded-[32px] shadow-lg border border-white/50">
+                    <div className="p-3 rounded-2xl bg-white shadow-md inline-block mb-6 text-blue-600"><TrendingUp size={24} /></div>
+                    <p className="text-slate-500 text-xs font-black uppercase tracking-wider mb-2">Hũ Chứng khoán</p>
+                    <p className="text-2xl font-black text-blue-700">{stats.stockValue.toLocaleString()} đ</p>
+                </div>
+                <div className="bg-purple-100/90 backdrop-blur-md p-8 rounded-[32px] shadow-lg border border-white/50">
+                    <div className="p-3 rounded-2xl bg-white shadow-md inline-block mb-6 text-purple-600"><Clock size={24} /></div>
+                    <p className="text-slate-500 text-xs font-black uppercase tracking-wider mb-2">Hũ Tiết kiệm</p>
+                    <p className="text-2xl font-black text-purple-700">{stats.savingsValue.toLocaleString()} đ</p>
+                </div>
+              </div>
+
+              {/* Asset Pie Chart Allocation */}
+              <div className="bg-white/90 backdrop-blur-md p-10 rounded-[40px] shadow-xl border border-white/40 flex flex-col items-center">
+                <h3 className="text-xl font-black mb-2 flex items-center gap-2 self-start"><Target className="text-indigo-600" /> Phân bổ tài sản</h3>
+                <div className="w-full h-[400px]">
+                  {stats.totalAssets === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-300">
+                      <PiggyBank size={64} className="mb-4 opacity-20 animate-bounce" />
+                      <p className="font-bold italic text-slate-400">Hũ đang trống, hãy bắt đầu bỏ ống thôi!</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie 
+                          data={stats.pieData} 
+                          cx="50%" 
+                          cy="50%" 
+                          innerRadius={80} 
+                          outerRadius={140} 
+                          paddingAngle={8} 
+                          dataKey="value"
+                        >
+                          {stats.pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v) => `${v.toLocaleString()} đ`} contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'}} />
+                        <Legend verticalAlign="bottom" height={36} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TRANS-PIGGY TAB */}
+          {activeTab === 'piggy' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="bg-white/95 backdrop-blur-md p-10 rounded-[40px] shadow-xl border border-white/50">
+                <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><Plus className="text-indigo-600" /> Nhật ký tài chính</h3>
+                <form onSubmit={handleTransaction} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <select name="type" className="p-4 rounded-2xl bg-slate-50 font-bold outline-none"><option value="income">Thu nhập (+)</option><option value="expense">Chi tiêu (-)</option></select>
+                    <input name="amount" type="number" required placeholder="Số tiền" className="p-4 rounded-2xl bg-slate-50 font-bold outline-none" />
+                  </div>
+                  <input name="category" placeholder="Lý do (Thưởng, Ăn sáng...)" className="w-full p-4 rounded-2xl bg-slate-50 font-bold outline-none" />
+                  <button type="submit" className={`w-full ${isCapybaraTheme ? 'bg-amber-600 hover:bg-amber-700' : 'bg-pink-600 hover:bg-pink-700'} text-white font-black py-5 rounded-3xl shadow-xl transition-all`}>Ghi sổ</button>
+                </form>
+              </div>
+              <div className="bg-white/95 backdrop-blur-md p-10 rounded-[40px] shadow-xl border border-white/50 max-h-[500px] overflow-y-auto">
+                <h3 className="text-2xl font-black mb-8 flex items-center gap-2"><History className="text-slate-400" /> Lịch sử ví</h3>
+                <div className="space-y-4">
+                  {userData.transactions.length === 0 ? (
+                    <div className="text-center py-12 text-slate-300">Chưa có giao dịch nào được thực hiện.</div>
+                  ) : (
+                    userData.transactions.map(tx => (
+                      <div key={tx.id} className="p-5 bg-slate-50 rounded-3xl flex justify-between items-center">
+                        <div className="flex-1">
+                          <p className="font-black text-slate-700 text-sm">{tx.category}</p>
+                          <p className="text-[10px] text-slate-400 font-bold">{tx.date}</p>
+                        </div>
+                        <p className={`text-lg font-black ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {tx.type === 'income' ? '+' : '-'}{tx.amount.toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TRADE / INVESTMENT TAB */}
+          {activeTab === 'invest' && (
+            <div className="space-y-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="bg-white/95 backdrop-blur-md p-10 rounded-[40px] shadow-xl border border-white/50">
+                  <h3 className="text-2xl font-black mb-8 flex items-center gap-3 text-amber-600"><Award /> Hũ Vàng 🏆</h3>
+                  <div className="p-6 bg-amber-50 rounded-3xl mb-6 flex justify-between items-center border border-amber-200">
+                    <div>
+                      <p className="text-xs font-bold text-amber-700 uppercase mb-1">Số dư: {userData.investments.gold.toFixed(3)} chỉ</p>
+                      <p className="text-3xl font-black text-amber-950">{stats.goldValue.toLocaleString()} đ</p>
+                    </div>
+                    <div className="text-right space-y-1">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase">Mua: {marketPrices.goldBuy.toLocaleString()}đ</p>
+                        <p className="text-[10px] font-bold text-rose-500 uppercase">Bán: {marketPrices.goldSell.toLocaleString()}đ</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <button onClick={() => handleTradeGold('buy', marketPrices.goldBuy / 10)} className="flex-1 py-4 bg-amber-500 text-white font-black rounded-2xl shadow-lg hover:scale-105 transition-all">Mua 0.1 chỉ</button>
+                    <button onClick={() => handleTradeGold('sell')} className="flex-1 py-4 border-2 border-amber-500 text-amber-600 font-black rounded-2xl hover:bg-amber-50 transition-all">Bán Vàng</button>
+                  </div>
+                </div>
+
+                <div className="bg-white/95 backdrop-blur-md p-10 rounded-[40px] shadow-xl border border-white/50">
+                  <h3 className="text-2xl font-black mb-8 flex items-center gap-3 text-blue-600"><TrendingUp /> Chứng khoán 🏢</h3>
+                  <form onSubmit={handleTradeStock} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <select name="action" className="p-3 rounded-2xl bg-slate-50 font-bold border-none outline-none"><option value="buy">Mua (+)</option><option value="sell">Bán (-)</option></select>
+                      <input name="symbol" placeholder="Mã (FPT...)" required className="p-3 rounded-2xl bg-slate-50 font-bold border-none outline-none" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <input name="quantity" type="number" required placeholder="Số lượng" className="w-full p-3 rounded-2xl bg-slate-50 font-bold border-none outline-none" />
+                      <input name="price" type="number" required placeholder="Giá VND/CP" className="w-full p-3 rounded-2xl bg-slate-50 font-bold border-none outline-none" />
+                    </div>
+                    <button type="submit" className="w-full bg-blue-600 text-white font-black py-4 rounded-3xl hover:bg-blue-700 shadow-lg transition-all">Giao dịch ngay</button>
+                  </form>
+                  <div className="mt-6 space-y-2">
+                    {userData.investments.stocks.map((s, i) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-blue-50 rounded-2xl">
+                        <span className="font-black text-blue-800">{s.symbol} x{s.quantity} cp</span>
+                        <span className="font-black text-blue-900">{(s.quantity * s.currentPrice).toLocaleString()} đ</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/95 backdrop-blur-md p-10 rounded-[40px] shadow-xl border border-white/50">
+                <h3 className="text-2xl font-black mb-8 flex items-center gap-3 text-purple-600"><Clock /> Tiết kiệm 🌱</h3>
+                <form onSubmit={handleAddSavings} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+                  <input type="number" placeholder="Số tiền" value={savingsForm.amount} onChange={e => setSavingsForm({...savingsForm, amount: Number(e.target.value)})} className="p-3 rounded-2xl bg-slate-50 font-bold outline-none" />
+                  <input type="number" placeholder="Lãi suất (%)" value={savingsForm.rate} onChange={e => setSavingsForm({...savingsForm, rate: Number(e.target.value)})} className="p-3 rounded-2xl bg-slate-50 font-bold outline-none" />
+                  <input type="number" placeholder="Kỳ hạn (tháng)" value={savingsForm.months} onChange={e => setSavingsForm({...savingsForm, months: Number(e.target.value)})} className="p-3 rounded-2xl bg-slate-50 font-bold outline-none" />
+                  <button type="submit" className="bg-purple-600 text-white font-black rounded-2xl shadow-lg">Gửi tiết kiệm</button>
+                </form>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {userData.investments.savings.map(s => {
+                    const isMatured = new Date() >= new Date(s.maturityDate);
+                    return (
+                      <div key={s.id} className={`p-6 rounded-3xl border-2 ${isMatured ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-100'}`}>
+                        <p className="text-lg font-black text-slate-800 mb-2">{s.amount.toLocaleString()} đ</p>
+                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 mb-4 uppercase"><span>{s.rate}% lãi</span><span>{s.months} tháng</span></div>
+                        <button onClick={() => initiateWithdraw(s)} className={`w-full py-2 rounded-xl font-black text-xs ${isMatured ? 'bg-emerald-500 text-white' : 'bg-rose-100 text-rose-500'}`}>{isMatured ? 'Rút gốc + lãi' : 'Rút sớm (Mất lãi!)'}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ACADEMY HUB TAB */}
+          {activeTab === 'learn' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {INITIAL_LESSONS.map(lesson => (
+                <div key={lesson.id} className="bg-white/95 backdrop-blur-md rounded-[40px] shadow-xl border border-white/50 overflow-hidden hover:shadow-2xl transition-all group flex flex-col cursor-pointer">
+                  <div className="h-48 bg-slate-50 flex items-center justify-center text-7xl group-hover:scale-110 transition-transform">{lesson.emoji}</div>
+                  <div className="p-8 flex-1 flex flex-col justify-between">
+                    <div>
+                      <span className={`px-3 py-1 ${isCapybaraTheme ? 'bg-amber-100 text-amber-700' : 'bg-pink-100 text-pink-700'} rounded-full text-[10px] font-black uppercase`}>{lesson.category}</span>
+                      <h4 className="text-xl font-black mt-3 mb-2">{lesson.title}</h4>
+                      <p className="text-slate-500 text-sm italic">"{lesson.summary}"</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Saving Withdrawal Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-white w-full max-w-md rounded-[40px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className={`p-10 text-center ${confirmModal.isEarly ? 'bg-rose-50' : 'bg-emerald-50'}`}>
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm bg-white ${confirmModal.isEarly ? 'text-rose-500' : 'text-emerald-500'}`}>
+                {confirmModal.isEarly ? <AlertTriangle size={40} /> : <CheckCircle2 size={40} />}
+              </div>
+              <h3 className="text-2xl font-black text-slate-800 mb-2">{confirmModal.isEarly ? 'Rút tiền sớm!' : 'Nhận tiền tiết kiệm'}</h3>
+              <p className="text-slate-500 font-medium text-sm leading-relaxed">
+                {confirmModal.isEarly 
+                  ? `Rút ngay bây giờ con sẽ MẤT lãi. Con chỉ nhận lại số tiền gốc là ${confirmModal.item.amount.toLocaleString()}đ.`
+                  : `Tuyệt vời! Con nhận đủ Gốc + Lãi là ${(confirmModal.item.amount + confirmModal.item.expectedInterest).toLocaleString()}đ.`}
+              </p>
+            </div>
+            <div className="p-8 flex gap-4">
+              <button onClick={() => setConfirmModal({show: false, item: null, isEarly: false})} className="flex-1 py-4 bg-slate-100 text-slate-600 font-black rounded-2xl">Hủy</button>
+              <button onClick={executeWithdraw} className={`flex-1 py-4 text-white font-black rounded-2xl ${confirmModal.isEarly ? 'bg-rose-500' : 'bg-emerald-500'}`}>Đồng ý</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Parent PIN Lock Authentication Panel */}
+      {parentPinModal.show && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[36px] shadow-2xl p-8 border border-slate-100 animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-3xl text-amber-600">
+                <Settings size={32} />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-800 font-playful">Cửa Của Mẹ</h3>
+              <p className="text-slate-400 text-xs font-semibold mt-1">Vui lòng nhập mã PIN của Mẹ để thiết lập.</p>
+            </div>
+
+            {/* PIN indicators */}
+            <div className="flex justify-center gap-4 mb-6">
+              {[0, 1, 2, 3].map((idx) => (
+                <div 
+                  key={idx} 
+                  className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
+                    parentPinModal.enteredPin.length > idx 
+                      ? 'bg-amber-500 border-amber-500 scale-110' 
+                      : 'border-slate-200 bg-white'
+                  }`}
+                />
+              ))}
+            </div>
+
+            {parentPinModal.error && (
+              <p className="text-rose-500 text-xs font-bold text-center mb-4">{parentPinModal.error}</p>
+            )}
+
+            {/* Keyboard matrix */}
+            <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <button 
+                  key={num} 
+                  onClick={() => handleParentPinPress(num.toString())}
+                  className="h-14 bg-slate-50 hover:bg-slate-100 rounded-2xl font-black text-slate-700 text-lg active:scale-95 transition-transform"
+                >
+                  {num}
+                </button>
+              ))}
+              <button 
+                onClick={() => setParentPinModal({ show: false, enteredPin: "", error: "" })}
+                className="h-14 text-rose-500 hover:bg-rose-50 rounded-2xl font-bold text-xs"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={() => handleParentPinPress("0")}
+                className="h-14 bg-slate-50 hover:bg-slate-100 rounded-2xl font-black text-slate-700 text-lg active:scale-95 transition-transform"
+              >
+                0
+              </button>
+              <button 
+                onClick={handleParentPinDelete}
+                className="h-14 flex items-center justify-center bg-slate-50 hover:bg-rose-50 text-slate-500 rounded-2xl active:scale-95 transition-transform"
+              >
+                <Delete size={20} />
+              </button>
+            </div>
+            
+            <p className="text-[10px] text-center text-slate-400 mt-4 italic font-medium">Mã PIN mặc định ban đầu là: 0000</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
